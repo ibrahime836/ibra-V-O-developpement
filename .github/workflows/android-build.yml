@@ -11,6 +11,10 @@ on:
 permissions:
   contents: write
 
+env:
+  ANDROID_HOME: /usr/local/android-sdk
+  ANDROID_SDK_ROOT: /usr/local/android-sdk
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -29,6 +33,20 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Set up Android SDK
+        uses: r0adkll/setup-android@v2
+        with:
+          api-level: 33
+          build-tools: 33.0.2
+
+      - name: Accept Android SDK licenses
+        run: |
+          if [ -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
+            yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --licenses
+          elif [ -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
+          fi
+
       - name: Prepare web dir
         run: |
           mkdir -p mobile/www
@@ -41,11 +59,22 @@ jobs:
           npm install @capacitor/core @capacitor/cli
 
       - name: Capacitor init & add android
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
         run: |
           cd mobile
           npx cap init "IbraV" com.ibrahim.ibra --web-dir=www || true
           npx cap add android || true
-          npx cap copy android
+          npx cap copy android || true
+          ls -la android || true
+
+      - name: Sync Android & Gradle prepare
+        run: |
+          cd mobile
+          npx cap sync android || true
+          cd android
+          ./gradlew --version
 
       - name: Build Android APK
         run: |
