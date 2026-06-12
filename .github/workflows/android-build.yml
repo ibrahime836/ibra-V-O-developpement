@@ -57,7 +57,7 @@ jobs:
           ls -R mobile/android/app/build/outputs || true
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: app-debug.apk
           path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
