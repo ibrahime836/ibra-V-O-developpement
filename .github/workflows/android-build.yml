@@ -1,0 +1,62 @@
+name: Build Capacitor Android APK
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {}
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare web dir
+        run: |
+          mkdir -p mobile/www
+          rsync -a --exclude='.git' --exclude='.github' --exclude='node_modules' ./ mobile/www/
+
+      - name: Init npm and install Capacitor
+        run: |
+          cd mobile
+          npm init -y
+          npm install @capacitor/core @capacitor/cli
+
+      - name: Capacitor init & add android
+        run: |
+          cd mobile
+          npx cap init "IbraV" com.ibrahim.ibra --web-dir=www || true
+          npx cap add android || true
+          npx cap copy android
+
+      - name: Build Android APK
+        run: |
+          cd mobile/android
+          ./gradlew assembleDebug
+
+      - name: Upload APK to Release
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          asset_name: app-debug.apk
+          asset_content_type: application/vnd.android.package-archive
